@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Care & Discipleship Log</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+      :root {
+        --bg: #f4f6f8;
+        --surface: #ffffff;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --border: #d1d5db;
+        --neutral: #e5e7eb;
+        --accent: #365233;
+        --accent-dark: #2b4029;
+        --soft: #eaf3ea;
+        --warn: #b45309;
+        --warn-soft: #fef3c7;
+        --danger: #dc2626;
+      }
+      * { box-sizing: border-box; }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      html, body {
+        margin: 0; padding: 0;
+        background: linear-gradient(160deg, #eef5ee 0%, var(--bg) 45%, #eef6f0 100%);
+        font-family: 'Inter', "Segoe UI", Avenir Next, Arial, sans-serif;
+        color: var(--text);
+      }
+      .topbar {
+        background: var(--accent);
+        color: #fff;
+        padding: 16px 18px 14px;
+      }
+      .topbar h1 { margin: 0; font-size: 19px; font-weight: 800; }
+      .topbar p { margin: 3px 0 0; font-size: 12.5px; opacity: .88; }
+      .tabs {
+        display: flex; gap: 6px;
+        background: var(--surface);
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        position: sticky; top: 0; z-index: 5;
+      }
+      .tab-btn {
+        flex: 1; padding: 9px 6px; border: none; border-radius: 10px;
+        background: transparent; color: var(--muted); font-weight: 700;
+        font-size: 12.5px; cursor: pointer;
+      }
+      .tab-btn.active { background: var(--soft); color: var(--accent-dark); }
+      main { max-width: 720px; margin: 0 auto; padding: 14px 12px 40px; }
+      .view { display: none; }
+      .view.active { display: block; }
+      .card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 14px; padding: 14px; margin-bottom: 12px;
+      }
+      label { display: block; font-size: 12.5px; font-weight: 700; color: var(--muted); margin: 12px 0 5px; }
+      label:first-child { margin-top: 0; }
+      input[type="text"], input[type="date"], select, textarea {
+        width: 100%; padding: 9px 10px; border: 1px solid var(--border);
+        border-radius: 9px; font-size: 14px; font-family: inherit; background: #fff; color: var(--text);
+      }
+      textarea { min-height: 72px; resize: vertical; }
+      .help-types { display: flex; flex-wrap: wrap; gap: 8px; }
+      .chk {
+        display: flex; align-items: center; gap: 6px;
+        border: 1px solid var(--border); border-radius: 999px;
+        padding: 6px 12px; font-size: 12.5px; cursor: pointer; background: #fff;
+      }
+      .chk input { margin: 0; }
+      .chk.checked { background: var(--soft); border-color: var(--accent); color: var(--accent-dark); font-weight: 700; }
+      .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        padding: 11px 16px; border-radius: 10px; border: none; font-weight: 700;
+        font-size: 14px; cursor: pointer;
+      }
+      .btn-primary { background: var(--accent); color: #fff; width: 100%; margin-top: 14px; }
+      .btn-primary:active { background: var(--accent-dark); }
+      .btn-secondary { background: var(--neutral); color: var(--text); }
+      .btn-danger { background: #fee2e2; color: var(--danger); }
+      .btn-small { padding: 7px 11px; font-size: 12.5px; border-radius: 8px; }
+      .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+      .confidential-row { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+      .confidential-row input { margin: 0; }
+      .confidential-row span { font-size: 13px; color: var(--muted); }
+      .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+      .filters input, .filters select { font-size: 13px; padding: 8px 9px; }
+      .entry {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 12px; padding: 12px; margin-bottom: 10px;
+      }
+      .entry-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+      .entry-people { font-weight: 800; font-size: 14.5px; }
+      .entry-people .muted-to { font-weight: 600; color: var(--muted); }
+      .entry-date { font-size: 12px; color: var(--muted); white-space: nowrap; }
+      .badges { display: flex; flex-wrap: wrap; gap: 5px; margin: 7px 0; }
+      .badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--soft); color: var(--accent-dark); }
+      .badge.status-open { background: #dbeafe; color: #1e40af; }
+      .badge.status-followup { background: var(--warn-soft); color: var(--warn); }
+      .badge.status-closed { background: var(--neutral); color: var(--muted); }
+      .badge.lock { background: #fee2e2; color: var(--danger); }
+      .entry-topic { font-size: 13px; font-weight: 600; color: var(--text); margin: 2px 0; }
+      .entry-body { display: none; margin-top: 8px; font-size: 13.5px; line-height: 1.5; }
+      .entry-body.open { display: block; }
+      .entry-body .label { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; margin-top: 8px; }
+      .entry-body .label:first-child { margin-top: 0; }
+      .empty-state { text-align: center; color: var(--muted); padding: 30px 10px; font-size: 13.5px; }
+      #toast {
+        position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px);
+        background: #111827; color: #fff; padding: 10px 16px; border-radius: 10px;
+        font-size: 13px; opacity: 0; pointer-events: none; transition: all .25s ease; z-index: 50;
+      }
+      #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+      #loading {
+        display: none; position: fixed; inset: 0; background: rgba(255,255,255,.7);
+        align-items: center; justify-content: center; font-weight: 700; color: var(--accent-dark); z-index: 40;
+      }
+      #loading.show { display: flex; }
+      .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+      .kpi { background: var(--soft); border-radius: 12px; padding: 12px; }
+      .kpi .num { font-size: 24px; font-weight: 900; color: var(--accent-dark); }
+      .kpi .lbl { font-size: 11.5px; color: var(--muted); font-weight: 700; }
+      .bar-row { margin-bottom: 8px; }
+      .bar-row .bar-label { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 3px; }
+      .bar-track { background: var(--neutral); border-radius: 999px; height: 8px; overflow: hidden; }
+      .bar-fill { background: var(--accent); height: 100%; }
+      .section-title { font-size: 13px; font-weight: 800; color: var(--accent-dark); margin: 16px 0 8px; }
+      .notice { font-size: 12.5px; background: var(--warn-soft); color: var(--warn); border-radius: 10px; padding: 9px 11px; margin-bottom: 12px; }
+    </style>
+    <script>
+      // ⚠️ REQUIRED for standalone (GitHub Pages) hosting: paste your deployed
+      // Apps Script Web App "/exec" URL here. Not needed if this file is
+      // served directly by Apps Script's HtmlService.
+      window.RLCC_API_URL = "https://script.google.com/macros/s/AKfycbzqPVwqMRytu_D0fSZ-ZQjN-A4fWOQqIL7NcEOCI3tFCW_d726a0lwlZt6WSWXbtIpq1g/exec";
+    </script>
+  </head>
+  <body>
+    <div class="topbar">
+      <h1 id="appTitle">Care & Discipleship Log</h1>
+      <p>Mentoring · Coaching · Counseling · Discipling · Spiritual Direction</p>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" data-view="new" onclick="setView('new')">New Entry</button>
+      <button class="tab-btn" data-view="log" onclick="setView('log')">Log</button>
+      <button class="tab-btn" data-view="stats" onclick="setView('stats')">Stats</button>
+    </div>
+
+    <main>
+      <!-- NEW ENTRY -->
+      <section id="viewNew" class="view active">
+        <div class="card">
+          <div id="editingNotice" style="display:none;" class="notice">Editing an existing entry. <a href="#" onclick="cancelEdit();return false;" style="color:var(--warn);font-weight:700;">Cancel edit</a></div>
+
+          <label>Helper (who gave the help)</label>
+          <select id="helperSelect" onchange="onPersonSelectChange('helper')"></select>
+          <input type="text" id="helperOther" style="display:none;margin-top:6px;" placeholder="Type the helper's name">
+
+          <label>Person Helped</label>
+          <select id="personSelect" onchange="onPersonSelectChange('person')"></select>
+          <input type="text" id="personOther" style="display:none;margin-top:6px;" placeholder="Type the person's name">
+
+          <div class="row2">
+            <div>
+              <label>Date of Activity</label>
+              <input type="date" id="activityDate">
+            </div>
+            <div>
+              <label>Status</label>
+              <select id="statusSelect"></select>
+            </div>
+          </div>
+
+          <label>Type of Help</label>
+          <div class="help-types" id="helpTypesGroup"></div>
+
+          <label>Topic / Focus</label>
+          <input type="text" id="topicInput" placeholder="e.g. Career decision, marriage conflict, prayer for healing">
+
+          <label>Summary — what happened</label>
+          <textarea id="summaryInput" placeholder="Brief summary of the conversation or session"></textarea>
+
+          <label>Follow-Through / Next Steps</label>
+          <textarea id="followThroughInput" placeholder="What's the plan going forward?"></textarea>
+
+          <label>Follow-up Date (optional)</label>
+          <input type="date" id="followUpDate">
+
+          <div class="confidential-row">
+            <input type="checkbox" id="confidentialCheck">
+            <span>Mark as confidential (sensitive/counseling — hide details in the shared log list)</span>
+          </div>
+
+          <button class="btn btn-primary" id="saveBtn" onclick="saveEntry()">Save Entry</button>
+        </div>
+      </section>
+
+      <!-- LOG -->
+      <section id="viewLog" class="view">
+        <div class="card">
+          <div class="filters">
+            <input type="text" id="filterPerson" placeholder="Person helped">
+            <input type="text" id="filterHelper" placeholder="Helper">
+            <select id="filterType"><option value="">Any type</option></select>
+            <select id="filterStatus"><option value="">Any status</option></select>
+            <input type="date" id="filterFrom">
+            <input type="date" id="filterTo">
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-secondary btn-small" onclick="loadEntries()">Search</button>
+            <button class="btn btn-secondary btn-small" onclick="clearFilters()">Clear</button>
+          </div>
+        </div>
+        <div id="entryList"></div>
+      </section>
+
+      <!-- STATS -->
+      <section id="viewStats" class="view">
+        <div class="card">
+          <div class="row2">
+            <div>
+              <label>From</label>
+              <input type="date" id="statsFrom">
+            </div>
+            <div>
+              <label>To</label>
+              <input type="date" id="statsTo">
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-small" style="margin-top:10px;" onclick="loadStats()">Update</button>
+        </div>
+        <div id="statsOutput"></div>
+      </section>
+    </main>
+
+    <div id="toast"></div>
+    <div id="loading">Loading…</div>
+
+    <script>
+      // ===== SERVER BRIDGE (JSONP so this also works hosted standalone) =====
+      var API_BASE_URL_ = (window.RLCC_API_URL || '').trim();
+      var jsonpCounter_ = 0;
+      var usingGasRunner_ = (typeof google !== 'undefined' && google.script && google.script.run);
+
+      function callServer(fnName) {
+        var args = Array.prototype.slice.call(arguments, 1);
+
+        if (usingGasRunner_) {
+          return new Promise(function(resolve, reject) {
+            var runner = google.script.run
+              .withSuccessHandler(resolve)
+              .withFailureHandler(function(err) {
+                reject(new Error(err && err.message ? err.message : String(err || 'Unknown error')));
+              });
+            runner[fnName].apply(runner, args);
+          });
+        }
+
+        return new Promise(function(resolve, reject) {
+          if (!API_BASE_URL_ || API_BASE_URL_.indexOf('PASTE_YOUR') === 0) {
+            reject(new Error('API URL is not configured. Set window.RLCC_API_URL at the top of index.html.'));
+            return;
+          }
+          jsonpCounter_ += 1;
+          var callbackName = '__careLogCb' + jsonpCounter_ + '_' + Date.now();
+          var script = document.createElement('script');
+          var timeoutId;
+
+          function cleanup() {
+            delete window[callbackName];
+            if (script.parentNode) script.parentNode.removeChild(script);
+            clearTimeout(timeoutId);
+          }
+
+          window[callbackName] = function(result) {
+            cleanup();
+            if (result && result.ok) resolve(result.data);
+            else reject(new Error((result && result.error) || 'Server error'));
+          };
+
+          timeoutId = setTimeout(function() {
+            cleanup();
+            reject(new Error('Request timed out. Please try again.'));
+          }, 60000);
+
+          var url = API_BASE_URL_ +
+            (API_BASE_URL_.indexOf('?') === -1 ? '?' : '&') +
+            'api=1&fn=' + encodeURIComponent(fnName) +
+            '&args=' + encodeURIComponent(JSON.stringify(args)) +
+            '&callback=' + encodeURIComponent(callbackName);
+
+          script.src = url;
+          script.onerror = function() {
+            cleanup();
+            reject(new Error('Could not reach the server. Check your connection or the API URL.'));
+          };
+          document.body.appendChild(script);
+        });
+      }
+
+      // ===== STATE =====
+      var state = {
+        bootstrap: null,
+        editingEntryId: null,
+        view: 'new'
+      };
+
+      function el(id) { return document.getElementById(id); }
+
+      function setLoading(active) {
+        el('loading').classList.toggle('show', !!active);
+      }
+
+      function showToast(message, isError) {
+        var t = el('toast');
+        t.textContent = message;
+        t.style.background = isError ? '#991b1b' : '#111827';
+        t.classList.add('show');
+        clearTimeout(showToast._timer);
+        showToast._timer = setTimeout(function() { t.classList.remove('show'); }, 2400);
+      }
+
+      function escHtml(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+
+      function setView(name) {
+        state.view = name;
+        ['new', 'log', 'stats'].forEach(function(v) {
+          el('view' + v.charAt(0).toUpperCase() + v.slice(1)).classList.toggle('active', v === name);
+        });
+        document.querySelectorAll('.tab-btn').forEach(function(b) {
+          b.classList.toggle('active', b.getAttribute('data-view') === name);
+        });
+        if (name === 'log' && !el('entryList').dataset.loaded) loadEntries();
+        if (name === 'stats' && !el('statsOutput').dataset.loaded) loadStats();
+      }
+
+      // ===== BOOTSTRAP / FORM SETUP =====
+
+      function populatePersonSelect(selectEl, roster) {
+        selectEl.innerHTML = '';
+        var blank = document.createElement('option');
+        blank.value = ''; blank.textContent = '— Select —';
+        selectEl.appendChild(blank);
+        roster.forEach(function(p) {
+          var opt = document.createElement('option');
+          opt.value = p.name;
+          opt.textContent = p.name + (p.className ? ' (' + p.className + ')' : '');
+          selectEl.appendChild(opt);
+        });
+        var other = document.createElement('option');
+        other.value = '__other__'; other.textContent = 'Other (type a name)';
+        selectEl.appendChild(other);
+      }
+
+      function onPersonSelectChange(which) {
+        var select = which === 'helper' ? el('helperSelect') : el('personSelect');
+        var other = which === 'helper' ? el('helperOther') : el('personOther');
+        other.style.display = select.value === '__other__' ? 'block' : 'none';
+      }
+
+      function getPersonValue(which) {
+        var select = which === 'helper' ? el('helperSelect') : el('personSelect');
+        var other = which === 'helper' ? el('helperOther') : el('personOther');
+        return select.value === '__other__' ? other.value.trim() : select.value;
+      }
+
+      function renderHelpTypeCheckboxes(types) {
+        var group = el('helpTypesGroup');
+        group.innerHTML = '';
+        types.forEach(function(t) {
+          var label = document.createElement('label');
+          label.className = 'chk';
+          var input = document.createElement('input');
+          input.type = 'checkbox'; input.value = t;
+          input.onchange = function() { label.classList.toggle('checked', input.checked); };
+          label.appendChild(input);
+          var span = document.createElement('span');
+          span.textContent = t;
+          label.appendChild(span);
+          group.appendChild(label);
+        });
+      }
+
+      function getCheckedHelpTypes() {
+        var out = [];
+        el('helpTypesGroup').querySelectorAll('input[type=checkbox]').forEach(function(cb) {
+          if (cb.checked) out.push(cb.value);
+        });
+        return out;
+      }
+
+      function setCheckedHelpTypes(values) {
+        el('helpTypesGroup').querySelectorAll('input[type=checkbox]').forEach(function(cb) {
+          cb.checked = values.indexOf(cb.value) !== -1;
+          cb.parentElement.classList.toggle('checked', cb.checked);
+        });
+      }
+
+      function populateSelectOptions(selectEl, values, includeBlankLabel) {
+        selectEl.innerHTML = '';
+        if (includeBlankLabel) {
+          var blank = document.createElement('option');
+          blank.value = ''; blank.textContent = includeBlankLabel;
+          selectEl.appendChild(blank);
+        }
+        values.forEach(function(v) {
+          var opt = document.createElement('option');
+          opt.value = v; opt.textContent = v;
+          selectEl.appendChild(opt);
+        });
+      }
+
+      async function loadBootstrap() {
+        setLoading(true);
+        try {
+          var data = await callServer('apiGetBootstrap');
+          state.bootstrap = data;
+          el('appTitle').textContent = data.appTitle || 'Care & Discipleship Log';
+          document.title = data.appTitle || 'Care & Discipleship Log';
+
+          populatePersonSelect(el('helperSelect'), data.roster || []);
+          populatePersonSelect(el('personSelect'), data.roster || []);
+          renderHelpTypeCheckboxes(data.helpTypes || []);
+          populateSelectOptions(el('statusSelect'), data.statusOptions || []);
+          populateSelectOptions(el('filterType'), data.helpTypes || [], 'Any type');
+          populateSelectOptions(el('filterStatus'), data.statusOptions || [], 'Any status');
+
+          el('activityDate').value = data.todayIso || '';
+
+          if (!data.rosterAvailable) {
+            var notice = document.createElement('div');
+            notice.className = 'notice';
+            notice.textContent = 'Member list unavailable (' + (data.rosterNote || 'not configured') + '). Use "Other" to type names for now.';
+            el('viewNew').querySelector('.card').insertBefore(notice, el('viewNew').querySelector('.card').firstChild);
+          }
+        } catch (err) {
+          showToast('Could not load app data: ' + err.message, true);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      // ===== SAVE / EDIT =====
+
+      function resetForm() {
+        state.editingEntryId = null;
+        el('editingNotice').style.display = 'none';
+        el('saveBtn').textContent = 'Save Entry';
+        el('helperSelect').value = ''; el('helperOther').value = ''; el('helperOther').style.display = 'none';
+        el('personSelect').value = ''; el('personOther').value = ''; el('personOther').style.display = 'none';
+        el('activityDate').value = state.bootstrap ? state.bootstrap.todayIso : '';
+        setCheckedHelpTypes([]);
+        el('topicInput').value = '';
+        el('summaryInput').value = '';
+        el('followThroughInput').value = '';
+        el('followUpDate').value = '';
+        el('statusSelect').value = (state.bootstrap && state.bootstrap.statusOptions[0]) || 'Open';
+        el('confidentialCheck').checked = false;
+      }
+
+      function cancelEdit() { resetForm(); }
+
+      function buildEntryPayload() {
+        return {
+          helper: getPersonValue('helper'),
+          personHelped: getPersonValue('person'),
+          activityDate: el('activityDate').value,
+          helpTypes: getCheckedHelpTypes(),
+          topic: el('topicInput').value.trim(),
+          summary: el('summaryInput').value.trim(),
+          followThrough: el('followThroughInput').value.trim(),
+          followUpDate: el('followUpDate').value,
+          status: el('statusSelect').value,
+          confidential: el('confidentialCheck').checked
+        };
+      }
+
+      async function saveEntry() {
+        var payload = buildEntryPayload();
+        if (!payload.helper) { showToast('Please select or enter the Helper', true); return; }
+        if (!payload.personHelped) { showToast('Please select or enter the Person Helped', true); return; }
+        if (!payload.activityDate) { showToast('Please choose the activity date', true); return; }
+        if (payload.helpTypes.length === 0) { showToast('Please choose at least one type of help', true); return; }
+        if (!payload.summary) { showToast('Please add a short summary', true); return; }
+
+        el('saveBtn').disabled = true;
+        setLoading(true);
+        try {
+          if (state.editingEntryId) {
+            await callServer('apiUpdateCareEntry', state.editingEntryId, payload);
+            showToast('Entry updated');
+          } else {
+            await callServer('apiSaveCareEntry', payload);
+            showToast('Entry saved');
+          }
+          resetForm();
+          el('entryList').dataset.loaded = '';
+          el('statsOutput').dataset.loaded = '';
+        } catch (err) {
+          showToast('Save failed: ' + err.message, true);
+        } finally {
+          el('saveBtn').disabled = false;
+          setLoading(false);
+        }
+      }
+
+      function beginEdit(entry) {
+        state.editingEntryId = entry.entryId;
+        el('editingNotice').style.display = 'block';
+        el('saveBtn').textContent = 'Update Entry';
+
+        var helperOpt = Array.prototype.find.call(el('helperSelect').options, function(o) { return o.value === entry.helper; });
+        el('helperSelect').value = helperOpt ? entry.helper : '__other__';
+        el('helperOther').style.display = helperOpt ? 'none' : 'block';
+        el('helperOther').value = helperOpt ? '' : entry.helper;
+
+        var personOpt = Array.prototype.find.call(el('personSelect').options, function(o) { return o.value === entry.personHelped; });
+        el('personSelect').value = personOpt ? entry.personHelped : '__other__';
+        el('personOther').style.display = personOpt ? 'none' : 'block';
+        el('personOther').value = personOpt ? '' : entry.personHelped;
+
+        el('activityDate').value = entry.activityDate;
+        setCheckedHelpTypes(entry.helpTypes || []);
+        el('topicInput').value = entry.topic || '';
+        el('summaryInput').value = entry.summary || '';
+        el('followThroughInput').value = entry.followThrough || '';
+        el('followUpDate').value = entry.followUpDate || '';
+        el('statusSelect').value = entry.status || '';
+        el('confidentialCheck').checked = !!entry.confidential;
+
+        setView('new');
+        window.scrollTo(0, 0);
+      }
+
+      async function deleteEntry(entryId) {
+        if (!window.confirm('Delete this entry? This cannot be undone.')) return;
+        setLoading(true);
+        try {
+          await callServer('apiDeleteCareEntry', entryId);
+          showToast('Entry deleted');
+          loadEntries();
+          el('statsOutput').dataset.loaded = '';
+        } catch (err) {
+          showToast('Delete failed: ' + err.message, true);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      // ===== LOG / FILTER =====
+
+      function clearFilters() {
+        el('filterPerson').value = '';
+        el('filterHelper').value = '';
+        el('filterType').value = '';
+        el('filterStatus').value = '';
+        el('filterFrom').value = '';
+        el('filterTo').value = '';
+        loadEntries();
+      }
+
+      function statusBadgeClass(status) {
+        var s = (status || '').toLowerCase();
+        if (s.indexOf('follow') !== -1) return 'status-followup';
+        if (s.indexOf('closed') !== -1) return 'status-closed';
+        return 'status-open';
+      }
+
+      function renderEntries(entries) {
+        var list = el('entryList');
+        list.innerHTML = '';
+        if (!entries.length) {
+          list.innerHTML = '<div class="empty-state">No entries match yet.</div>';
+          return;
+        }
+        entries.forEach(function(e) {
+          var card = document.createElement('div');
+          card.className = 'entry';
+
+          var badgesHtml = e.helpTypes.map(function(t) { return '<span class="badge">' + escHtml(t) + '</span>'; }).join('') +
+            '<span class="badge ' + statusBadgeClass(e.status) + '">' + escHtml(e.status) + '</span>' +
+            (e.confidential ? '<span class="badge lock">🔒 Confidential</span>' : '');
+
+          var detailHtml = e.confidential
+            ? '<div class="label">Details</div><div>Confidential — open in the spreadsheet or edit to view.</div>'
+            : (
+              (e.topic ? '<div class="label">Topic</div><div>' + escHtml(e.topic) + '</div>' : '') +
+              '<div class="label">Summary</div><div>' + escHtml(e.summary).replace(/\n/g, '<br>') + '</div>' +
+              (e.followThrough ? '<div class="label">Follow-Through</div><div>' + escHtml(e.followThrough).replace(/\n/g, '<br>') + '</div>' : '') +
+              (e.followUpDate ? '<div class="label">Follow-up Date</div><div>' + escHtml(e.followUpDate) + '</div>' : '')
+            );
+
+          card.innerHTML =
+            '<div class="entry-top">' +
+              '<div class="entry-people">' + escHtml(e.helper) + ' <span class="muted-to">→</span> ' + escHtml(e.personHelped) + '</div>' +
+              '<div class="entry-date">' + escHtml(e.activityDate) + '</div>' +
+            '</div>' +
+            '<div class="badges">' + badgesHtml + '</div>' +
+            (e.topic && !e.confidential ? '<div class="entry-topic">' + escHtml(e.topic) + '</div>' : '') +
+            '<div class="entry-body" data-body></div>';
+
+          var body = card.querySelector('[data-body]');
+          body.innerHTML = detailHtml +
+            '<div class="btn-row">' +
+              '<button class="btn btn-secondary btn-small" data-edit>Edit</button>' +
+              '<button class="btn btn-danger btn-small" data-delete>Delete</button>' +
+            '</div>';
+
+          card.querySelector('.entry-top').addEventListener('click', function() {
+            body.classList.toggle('open');
+          });
+          body.querySelector('[data-edit]').addEventListener('click', function(ev) {
+            ev.stopPropagation();
+            beginEdit(e);
+          });
+          body.querySelector('[data-delete]').addEventListener('click', function(ev) {
+            ev.stopPropagation();
+            deleteEntry(e.entryId);
+          });
+
+          list.appendChild(card);
+        });
+      }
+
+      async function loadEntries() {
+        setLoading(true);
+        try {
+          var filters = {
+            personHelped: el('filterPerson').value.trim(),
+            helper: el('filterHelper').value.trim(),
+            helpType: el('filterType').value,
+            status: el('filterStatus').value,
+            fromIso: el('filterFrom').value,
+            toIso: el('filterTo').value
+          };
+          var entries = await callServer('apiGetCareEntries', filters);
+          renderEntries(entries);
+          el('entryList').dataset.loaded = '1';
+        } catch (err) {
+          showToast('Could not load entries: ' + err.message, true);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      // ===== STATS =====
+
+      function renderStats(stats) {
+        var out = el('statsOutput');
+        var typeEntries = Object.keys(stats.byType).map(function(k) { return { label: k, count: stats.byType[k] }; })
+          .sort(function(a, b) { return b.count - a.count; });
+        var maxTypeCount = typeEntries.reduce(function(m, t) { return Math.max(m, t.count); }, 1);
+
+        var html = '<div class="card">' +
+          '<div class="kpi-grid">' +
+            '<div class="kpi"><div class="num">' + stats.totalEntries + '</div><div class="lbl">Total Sessions Logged</div></div>' +
+            '<div class="kpi"><div class="num">' + stats.uniquePeopleHelped + '</div><div class="lbl">People Helped</div></div>' +
+          '</div>' +
+          '<div class="section-title">By Type of Help</div>' +
+          typeEntries.map(function(t) {
+            var pct = Math.round((t.count / maxTypeCount) * 100);
+            return '<div class="bar-row"><div class="bar-label"><span>' + escHtml(t.label) + '</span><span>' + t.count + '</span></div>' +
+              '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;"></div></div></div>';
+          }).join('') +
+          (typeEntries.length ? '' : '<div class="empty-state">No data yet</div>') +
+          '<div class="section-title">By Status</div>' +
+          Object.keys(stats.byStatus).map(function(k) {
+            return '<span class="badge ' + statusBadgeClass(k) + '" style="margin-right:6px;">' + escHtml(k) + ': ' + stats.byStatus[k] + '</span>';
+          }).join('') +
+          '<div class="section-title">Most Active Helpers</div>' +
+          (stats.topHelpers.length ? stats.topHelpers.map(function(h) {
+            return '<div class="bar-row"><div class="bar-label"><span>' + escHtml(h.name) + '</span><span>' + h.count + '</span></div></div>';
+          }).join('') : '<div class="empty-state">No data yet</div>') +
+        '</div>';
+
+        out.innerHTML = html;
+      }
+
+      async function loadStats() {
+        setLoading(true);
+        try {
+          var stats = await callServer('apiGetDashboardStats', el('statsFrom').value, el('statsTo').value);
+          renderStats(stats);
+          el('statsOutput').dataset.loaded = '1';
+        } catch (err) {
+          showToast('Could not load stats: ' + err.message, true);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      // ===== INIT =====
+      document.addEventListener('DOMContentLoaded', function() {
+        loadBootstrap();
+      });
+    </script>
+  </body>
+</html>
