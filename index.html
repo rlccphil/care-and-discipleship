@@ -99,6 +99,12 @@
       .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
       .row2 > div { min-width: 0; }
       .row2 input[type="date"], .row2 select { width: 100%; min-width: 0; }
+      input[type="date"] {
+        -webkit-appearance: none;
+        appearance: none;
+        max-width: 100%;
+      }
+      .row2 { align-items: start; }
       .btn {
         display: inline-flex; align-items: center; justify-content: center;
         padding: 11px 16px; border-radius: 10px; border: none; font-weight: 700;
