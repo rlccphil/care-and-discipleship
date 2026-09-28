@@ -77,6 +77,18 @@
       }
       textarea { min-height: 72px; resize: vertical; }
       .help-types { display: flex; flex-wrap: wrap; gap: 8px; }
+      .ac-wrap { position: relative; }
+      .ac-list {
+        display: none; position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+        background: #fff; border: 1px solid var(--border); border-radius: 10px;
+        max-height: 190px; overflow-y: auto; z-index: 20;
+        box-shadow: 0 8px 20px rgba(0,0,0,.08);
+      }
+      .ac-list.open { display: block; }
+      .ac-item { padding: 9px 12px; font-size: 13.5px; cursor: pointer; }
+      .ac-item:active, .ac-item.active { background: var(--soft); }
+      .ac-item + .ac-item { border-top: 1px solid var(--neutral); }
+      .ac-empty { padding: 9px 12px; font-size: 12.5px; color: var(--muted); }
       .chk {
         display: flex; align-items: center; gap: 6px;
         border: 1px solid var(--border); border-radius: 999px;
@@ -85,6 +97,8 @@
       .chk input { margin: 0; }
       .chk.checked { background: var(--soft); border-color: var(--accent); color: var(--accent-dark); font-weight: 700; }
       .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .row2 > div { min-width: 0; }
+      .row2 input[type="date"], .row2 select { width: 100%; min-width: 0; }
       .btn {
         display: inline-flex; align-items: center; justify-content: center;
         padding: 11px 16px; border-radius: 10px; border: none; font-weight: 700;
@@ -171,12 +185,16 @@
           <div id="editingNotice" style="display:none;" class="notice">Editing an existing entry. <a href="#" onclick="cancelEdit();return false;" style="color:var(--warn);font-weight:700;">Cancel edit</a></div>
 
           <label>Helper (who gave the help)</label>
-          <select id="helperSelect" onchange="onPersonSelectChange('helper')"></select>
-          <input type="text" id="helperOther" style="display:none;margin-top:6px;" placeholder="Type the helper's name">
+          <div class="ac-wrap">
+            <input type="text" id="helperInput" placeholder="Type a name — new names are OK" autocomplete="off">
+            <div class="ac-list" id="helperSuggestions"></div>
+          </div>
 
           <label>Person Helped</label>
-          <select id="personSelect" onchange="onPersonSelectChange('person')"></select>
-          <input type="text" id="personOther" style="display:none;margin-top:6px;" placeholder="Type the person's name">
+          <div class="ac-wrap">
+            <input type="text" id="personInput" placeholder="Type a name — new names are OK" autocomplete="off">
+            <div class="ac-list" id="personSuggestions"></div>
+          </div>
 
           <div class="row2">
             <div>
@@ -190,7 +208,7 @@
           </div>
 
           <label>Type of Help</label>
-          <div class="help-types" id="helpTypesGroup"></div>
+          <select id="helpTypeSelect"></select>
 
           <label>Topic / Focus</label>
           <input type="text" id="topicInput" placeholder="e.g. Career decision, marriage conflict, prayer for healing">
@@ -358,64 +376,55 @@
 
       // ===== BOOTSTRAP / FORM SETUP =====
 
-      function populatePersonSelect(selectEl, roster) {
-        selectEl.innerHTML = '';
-        var blank = document.createElement('option');
-        blank.value = ''; blank.textContent = '— Select —';
-        selectEl.appendChild(blank);
-        roster.forEach(function(p) {
-          var opt = document.createElement('option');
-          opt.value = p.name;
-          opt.textContent = p.name + (p.className ? ' (' + p.className + ')' : '');
-          selectEl.appendChild(opt);
-        });
-        var other = document.createElement('option');
-        other.value = '__other__'; other.textContent = 'Other (type a name)';
-        selectEl.appendChild(other);
-      }
+      function setupAutocomplete(inputEl, listEl, getRoster) {
+        function render(items) {
+          if (!items.length) { listEl.innerHTML = ''; listEl.classList.remove('open'); return; }
+          listEl.innerHTML = items.map(function(p) {
+            return '<div class="ac-item" data-name="' + escHtml(p.name) + '">' + escHtml(p.name) +
+              (p.className ? ' <span style="color:var(--muted);font-size:11.5px;">(' + escHtml(p.className) + ')</span>' : '') +
+              '</div>';
+          }).join('');
+          listEl.classList.add('open');
+        }
 
-      function onPersonSelectChange(which) {
-        var select = which === 'helper' ? el('helperSelect') : el('personSelect');
-        var other = which === 'helper' ? el('helperOther') : el('personOther');
-        other.style.display = select.value === '__other__' ? 'block' : 'none';
+        inputEl.addEventListener('input', function() {
+          var q = inputEl.value.trim().toLowerCase();
+          var roster = getRoster();
+          var matches = !q ? roster.slice(0, 8) : roster.filter(function(p) {
+            return p.name.toLowerCase().indexOf(q) !== -1;
+          }).slice(0, 8);
+          render(matches);
+        });
+        inputEl.addEventListener('focus', function() {
+          inputEl.dispatchEvent(new Event('input'));
+        });
+        listEl.addEventListener('mousedown', function(ev) {
+          var item = ev.target.closest('.ac-item');
+          if (!item) return;
+          ev.preventDefault();
+          inputEl.value = item.getAttribute('data-name');
+          listEl.classList.remove('open');
+        });
+        document.addEventListener('click', function(ev) {
+          if (ev.target !== inputEl && !listEl.contains(ev.target)) listEl.classList.remove('open');
+        });
       }
 
       function getPersonValue(which) {
-        var select = which === 'helper' ? el('helperSelect') : el('personSelect');
-        var other = which === 'helper' ? el('helperOther') : el('personOther');
-        return select.value === '__other__' ? other.value.trim() : select.value;
+        return (which === 'helper' ? el('helperInput') : el('personInput')).value.trim();
       }
 
-      function renderHelpTypeCheckboxes(types) {
-        var group = el('helpTypesGroup');
-        group.innerHTML = '';
-        types.forEach(function(t) {
-          var label = document.createElement('label');
-          label.className = 'chk';
-          var input = document.createElement('input');
-          input.type = 'checkbox'; input.value = t;
-          input.onchange = function() { label.classList.toggle('checked', input.checked); };
-          label.appendChild(input);
-          var span = document.createElement('span');
-          span.textContent = t;
-          label.appendChild(span);
-          group.appendChild(label);
-        });
+      function renderHelpTypeOptions(types) {
+        populateSelectOptions(el('helpTypeSelect'), types, '— Select —');
       }
 
-      function getCheckedHelpTypes() {
-        var out = [];
-        el('helpTypesGroup').querySelectorAll('input[type=checkbox]').forEach(function(cb) {
-          if (cb.checked) out.push(cb.value);
-        });
-        return out;
+      function getSelectedHelpType() {
+        var v = el('helpTypeSelect').value;
+        return v ? [v] : [];
       }
 
-      function setCheckedHelpTypes(values) {
-        el('helpTypesGroup').querySelectorAll('input[type=checkbox]').forEach(function(cb) {
-          cb.checked = values.indexOf(cb.value) !== -1;
-          cb.parentElement.classList.toggle('checked', cb.checked);
-        });
+      function setSelectedHelpType(values) {
+        el('helpTypeSelect').value = (values && values[0]) || '';
       }
 
       function populateSelectOptions(selectEl, values, includeBlankLabel) {
@@ -437,12 +446,12 @@
         try {
           var data = await callServer('apiGetBootstrap');
           state.bootstrap = data;
-          el('appTitle').textContent = data.appTitle || 'Care & Discipleship Log';
-          document.title = data.appTitle || 'Care & Discipleship Log';
+          el('appTitle').textContent = 'Personal Care Log';
+          document.title = 'Personal Care Log';
 
-          populatePersonSelect(el('helperSelect'), data.roster || []);
-          populatePersonSelect(el('personSelect'), data.roster || []);
-          renderHelpTypeCheckboxes(data.helpTypes || []);
+          setupAutocomplete(el('helperInput'), el('helperSuggestions'), function() { return state.bootstrap.roster || []; });
+          setupAutocomplete(el('personInput'), el('personSuggestions'), function() { return state.bootstrap.roster || []; });
+          renderHelpTypeOptions(data.helpTypes || []);
           populateSelectOptions(el('statusSelect'), data.statusOptions || []);
           populateSelectOptions(el('filterType'), data.helpTypes || [], 'Any type');
           populateSelectOptions(el('filterStatus'), data.statusOptions || [], 'Any status');
@@ -452,7 +461,7 @@
           if (!data.rosterAvailable) {
             var notice = document.createElement('div');
             notice.className = 'notice';
-            notice.textContent = 'Member list unavailable (' + (data.rosterNote || 'not configured') + '). Use "Other" to type names for now.';
+            notice.textContent = 'Member list unavailable (' + (data.rosterNote || 'not configured') + '). Type any name — it will be saved as entered.';
             el('viewNew').querySelector('.card').insertBefore(notice, el('viewNew').querySelector('.card').firstChild);
           }
         } catch (err) {
@@ -468,10 +477,10 @@
         state.editingEntryId = null;
         el('editingNotice').style.display = 'none';
         el('saveBtn').textContent = 'Save Entry';
-        el('helperSelect').value = ''; el('helperOther').value = ''; el('helperOther').style.display = 'none';
-        el('personSelect').value = ''; el('personOther').value = ''; el('personOther').style.display = 'none';
+        el('helperInput').value = '';
+        el('personInput').value = '';
         el('activityDate').value = state.bootstrap ? state.bootstrap.todayIso : '';
-        setCheckedHelpTypes([]);
+        setSelectedHelpType([]);
         el('topicInput').value = '';
         el('summaryInput').value = '';
         el('followThroughInput').value = '';
@@ -487,7 +496,7 @@
           helper: getPersonValue('helper'),
           personHelped: getPersonValue('person'),
           activityDate: el('activityDate').value,
-          helpTypes: getCheckedHelpTypes(),
+          helpTypes: getSelectedHelpType(),
           topic: el('topicInput').value.trim(),
           summary: el('summaryInput').value.trim(),
           followThrough: el('followThroughInput').value.trim(),
@@ -502,7 +511,7 @@
         if (!payload.helper) { showToast('Please select or enter the Helper', true); return; }
         if (!payload.personHelped) { showToast('Please select or enter the Person Helped', true); return; }
         if (!payload.activityDate) { showToast('Please choose the activity date', true); return; }
-        if (payload.helpTypes.length === 0) { showToast('Please choose at least one type of help', true); return; }
+        if (payload.helpTypes.length === 0) { showToast('Please choose a type of help', true); return; }
         if (!payload.summary) { showToast('Please add a short summary', true); return; }
 
         el('saveBtn').disabled = true;
@@ -531,18 +540,11 @@
         el('editingNotice').style.display = 'block';
         el('saveBtn').textContent = 'Update Entry';
 
-        var helperOpt = Array.prototype.find.call(el('helperSelect').options, function(o) { return o.value === entry.helper; });
-        el('helperSelect').value = helperOpt ? entry.helper : '__other__';
-        el('helperOther').style.display = helperOpt ? 'none' : 'block';
-        el('helperOther').value = helperOpt ? '' : entry.helper;
-
-        var personOpt = Array.prototype.find.call(el('personSelect').options, function(o) { return o.value === entry.personHelped; });
-        el('personSelect').value = personOpt ? entry.personHelped : '__other__';
-        el('personOther').style.display = personOpt ? 'none' : 'block';
-        el('personOther').value = personOpt ? '' : entry.personHelped;
+        el('helperInput').value = entry.helper || '';
+        el('personInput').value = entry.personHelped || '';
 
         el('activityDate').value = entry.activityDate;
-        setCheckedHelpTypes(entry.helpTypes || []);
+        setSelectedHelpType(entry.helpTypes || []);
         el('topicInput').value = entry.topic || '';
         el('summaryInput').value = entry.summary || '';
         el('followThroughInput').value = entry.followThrough || '';
